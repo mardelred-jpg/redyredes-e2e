@@ -5,6 +5,7 @@
   "description": "RedyRedes E2E validation platform — Customer Journey tests (PAT-001B, PAT-001C, PAT-002...)",
   "scripts": {
     "build:check": "tsc --noEmit",
+    "e2e:pat000": "playwright test e2e/pat-000.spec.ts",
     "e2e:pat001b": "playwright test e2e/pat-001b.spec.ts",
     "e2e:pat001b:headed": "playwright test e2e/pat-001b.spec.ts --headed",
     "e2e:pat001b:debug": "playwright test e2e/pat-001b.spec.ts --debug",

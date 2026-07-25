@@ -1,0 +1,118 @@
+name: PAT-001B — Customer Journey (Integration)
+
+on:
+  # Triggered on deploy to integration/staging environments
+  deployment_status:           # Fires when Vercel marks a deployment as "ready"
+
+  # Also allow manual trigger with an environment parameter
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment URL (leave blank to use secrets)'
+        required: false
+        type: string
+
+  # Optionally: run on push to integration branch
+  push:
+    branches:
+      - integration
+      - staging
+      - 'release/**'
+
+concurrency:
+  group: pat-001b-${{ github.ref }}
+  cancel-in-progress: false    # Never cancel in-progress journey tests
+
+jobs:
+  customer-journey:
+    name: PAT-001B Customer Journey
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    # Only run if the deployment was successful (skip "pending", "error", "failure" states)
+    if: |
+      github.event_name != 'deployment_status' ||
+      github.event.deployment_status.state == 'success'
+
+    steps:
+      # ── Setup ─────────────────────────────────────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers (Chromium only)
+        run: npx playwright install chromium --with-deps
+
+      # ── Resolve target URL ─────────────────────────────────
+      # On deployment_status events, override the URL with the actual Vercel preview URL
+      - name: Resolve deployment target URL
+        id: resolve_url
+        run: |
+          if [ "${{ github.event_name }}" = "deployment_status" ]; then
+            echo "Using Vercel deployment URL: ${{ github.event.deployment_status.target_url }}"
+            echo "target_url=${{ github.event.deployment_status.target_url }}" >> $GITHUB_OUTPUT
+          elif [ -n "${{ github.event.inputs.environment }}" ]; then
+            echo "target_url=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          else
+            echo "target_url=${{ secrets.E2E_API_URL }}" >> $GITHUB_OUTPUT
+          fi
+
+      # ── Run PAT-001B ───────────────────────────────────────
+      - name: Run PAT-001B Customer Journey
+        run: npm run e2e:pat001b
+        env:
+          CI: true
+          E2E_API_URL: ${{ secrets.E2E_API_URL }}
+          E2E_JOIN_URL: ${{ secrets.E2E_JOIN_URL }}
+          E2E_DASHBOARD_URL: ${{ secrets.E2E_DASHBOARD_URL }}
+          E2E_EMAIL_DOMAIN: ${{ secrets.E2E_EMAIL_DOMAIN }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+          CLERK_TESTING_TOKEN: ${{ secrets.CLERK_TESTING_TOKEN }}
+          STRIPE_SECRET_KEY: ${{ secrets.STRIPE_SECRET_KEY }}
+
+      # ── Upload ALL artifacts (video, traces, HAR, screenshots) ──
+      - name: Upload Playwright HTML Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pat-001b-report-${{ github.run_number }}
+          path: playwright-report/
+          retention-days: 30
+
+      - name: Upload test-results (video, traces, screenshots)
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pat-001b-artifacts-${{ github.run_number }}
+          path: |
+            test-results/**/*.webm
+            test-results/**/*.zip
+            test-results/**/*.png
+            test-results/results.json
+          retention-days: 30
+
+      # ── Summary comment on PR ──────────────────────────────
+      - name: Post summary to GitHub Step Summary
+        if: always()
+        run: |
+          echo "## 🎭 PAT-001B — Customer Journey Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ **All assertions passed** — Customer Journey is GREEN" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Failures detected** — Download artifacts to inspect:" >> $GITHUB_STEP_SUMMARY
+            echo "- 📹 Video: \`pat-001b-artifacts-${{ github.run_number }}\`" >> $GITHUB_STEP_SUMMARY
+            echo "- 🔍 Trace: Open with \`npx playwright show-trace trace.zip\`" >> $GITHUB_STEP_SUMMARY
+            echo "- 📸 Screenshots: In artifacts ZIP" >> $GITHUB_STEP_SUMMARY
+          fi
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "Run #${{ github.run_number }} | Commit: \`${{ github.sha }}\`" >> $GITHUB_STEP_SUMMARY

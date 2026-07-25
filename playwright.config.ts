@@ -65,19 +65,27 @@ export default defineConfig({
   // Projects
   projects: [
     {
+      // PAT-000: Smoke test — runs on every push, no auth needed
+      name: 'PAT-000 — Smoke Test',
+      testMatch: 'e2e/pat-000.spec.ts',
+      use: {
+        ...devices['Desktop Chrome'],
+      },
+    },
+    {
+      // PAT-001B: Full browser journey with Clerk Testing Token
       name: 'PAT-001B — Customer Journey (Testing Token)',
       testMatch: 'e2e/pat-001b.spec.ts',
       use: {
         ...devices['Desktop Chrome'],
-        // Session storage will hold the Testing Token
       },
     },
     {
+      // PAT-001C: Full browser journey with real Clerk UI
       name: 'PAT-001C — Customer Journey (Real Clerk UI)',
       testMatch: 'e2e/pat-001c.spec.ts',
       use: {
         ...devices['Desktop Chrome'],
-        // No pre-auth: interacts with Clerk UI directly
       },
     },
   ],

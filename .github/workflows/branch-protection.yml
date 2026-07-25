@@ -1,0 +1,70 @@
+name: Branch Protection Status Check
+
+# This workflow is the required status check for branch protection.
+# It must pass before any PR can be merged into 'main'.
+#
+# It acts as an orchestrator:
+#   1. Runs PAT-000 (smoke) — always required
+#   2. If PAT-000 passes, gates the merge
+#
+# PAT-001B is NOT required for every PR merge (it runs on integration deploys).
+# Only PAT-000 is gated here, keeping PR feedback fast.
+
+on:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  required-checks:
+    name: Required Checks (PAT-000 must pass)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install chromium --with-deps
+
+      - name: Run PAT-000 (required gate)
+        run: npm run e2e:pat000
+        env:
+          CI: true
+          E2E_API_URL: ${{ secrets.E2E_API_URL }}
+          E2E_JOIN_URL: ${{ secrets.E2E_JOIN_URL }}
+          E2E_DASHBOARD_URL: ${{ secrets.E2E_DASHBOARD_URL }}
+          E2E_EMAIL_DOMAIN: ${{ secrets.E2E_EMAIL_DOMAIN }}
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+          CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+
+      - name: Upload artifacts on failure
+        uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: branch-protection-failure-${{ github.run_number }}
+          path: |
+            playwright-report/
+            test-results/**/*.png
+            test-results/**/*.zip
+          retention-days: 7
+
+      - name: Post status to Step Summary
+        if: always()
+        run: |
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ PAT-000 passed — PR is ready to merge" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ PAT-000 failed — PR is BLOCKED" >> $GITHUB_STEP_SUMMARY
+            echo "The platform appears DOWN or unreachable. Fix the platform before merging." >> $GITHUB_STEP_SUMMARY
+          fi
