@@ -1,0 +1,9 @@
+# Code Owners for RedyRedes E2E
+
+# Default owners for everything
+*       @mardelred-jpg
+
+# Specific team ownership
+/e2e/helpers/   @mardelred-jpg
+/e2e/*.spec.ts  @mardelred-jpg
+/.github/       @mardelred-jpg
