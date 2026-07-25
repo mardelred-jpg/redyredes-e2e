@@ -42,11 +42,13 @@ export default defineConfig({
     // Screenshots on failure
     screenshot: 'only-on-failure',
 
-    // HAR recording for network inspection (Disabled to fix TS error)
-    // recordHar: {
-    //  path: 'test-results/network.har',
-    //  mode: 'minimal',
-    // },
+    // HAR recording for network inspection
+    contextOptions: {
+      recordHar: {
+        path: 'test-results/network.har',
+        mode: 'minimal',
+      },
+    },
 
     // Ignore HTTPS errors (Vercel preview deployments)
     ignoreHTTPSErrors: false,

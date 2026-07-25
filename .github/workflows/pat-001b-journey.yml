@@ -88,7 +88,7 @@ jobs:
           path: playwright-report/
           retention-days: 30
 
-      - name: Upload test-results (video, traces, screenshots)
+      - name: Upload test-results (video, traces, screenshots, HAR)
         uses: actions/upload-artifact@v4
         if: always()
         with:
@@ -97,6 +97,7 @@ jobs:
             test-results/**/*.webm
             test-results/**/*.zip
             test-results/**/*.png
+            test-results/**/*.har
             test-results/results.json
           retention-days: 30
 

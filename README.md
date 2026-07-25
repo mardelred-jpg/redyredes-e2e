@@ -1,8 +1,27 @@
 # redyredes-e2e
 
+[![PAT-000 Smoke Test](https://github.com/mardelred-jpg/redyredes-e2e/actions/workflows/pat-000-smoke.yml/badge.svg)](https://github.com/mardelred-jpg/redyredes-e2e/actions/workflows/pat-000-smoke.yml)
+[![PAT-001B Customer Journey](https://github.com/mardelred-jpg/redyredes-e2e/actions/workflows/pat-001b-journey.yml/badge.svg)](https://github.com/mardelred-jpg/redyredes-e2e/actions/workflows/pat-001b-journey.yml)
+
 **Cross-repository End-to-End testing and Continuous Validation framework for the RedyRedes platform.**
 
 Repositorio independiente que centraliza toda la validación de la plataforma desde la perspectiva del usuario final, garantizando que el entorno de producción nunca se vea comprometido.
+
+---
+
+## Architecture
+
+```mermaid
+flowchart TD
+    Core[redyredes-core] --> Dashboard[redyredes-dashboard]
+    Dashboard --> Onboarding[redyredes-onboarding]
+    Onboarding --> E2E[redyredes-e2e]
+```
+
+- **Core** no contiene tests E2E.
+- **Dashboard** no contiene tests E2E.
+- **Onboarding** no contiene tests E2E.
+- Toda la validación funcional vive exclusivamente aquí en `redyredes-e2e`.
 
 ---
 
@@ -111,7 +130,7 @@ Cuando un test falla en CI, se publican automáticamente:
 | Artefacto | Descripción |
 |-----------|-------------|
 | `*-report-N` | Informe HTML interactivo de Playwright |
-| `*-artifacts-N` | Vídeo `.webm` del recorrido completo, Traza `.zip`, Capturas `.png` |
+| `*-artifacts-N` | Vídeo `.webm` del recorrido completo, Traza `.zip`, Capturas `.png`, Logs `.har` |
 
 Retención: 7 días para PAT-000, 30 días para PAT-001B.
 
