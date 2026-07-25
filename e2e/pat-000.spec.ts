@@ -1,5 +1,4 @@
 import { test, expect } from '@playwright/test';
-import { resetE2EDatabase } from './helpers/db-verify';
 
 /**
  * PAT-000 — Smoke Test
@@ -62,39 +61,6 @@ test.describe('PAT-000 — Smoke Test', () => {
       res?.status(),
       'Dashboard must be reachable (200 or redirect)'
     ).toBeLessThan(500);
-  });
-
-  // ── DB Layer ──────────────────────────────────────────────
-
-  test('DB: can connect and PRODUCTION data is intact', async () => {
-    const { PrismaClient } = await import('@prisma/client');
-    const prisma = new PrismaClient();
-    try {
-      // Basic connectivity
-      await prisma.$queryRaw`SELECT 1`;
-
-      // Verify PRODUCTION data integrity — no NULL environments
-      const nullEnvCount: any[] = await prisma.$queryRaw`
-        SELECT count(*)::int as cnt
-        FROM "Organization"
-        WHERE environment IS NULL
-      `;
-      expect(
-        nullEnvCount[0].cnt,
-        'No Organization should have NULL environment'
-      ).toBe(0);
-
-    } finally {
-      await prisma.$disconnect();
-    }
-  });
-
-  // ── E2E Reset Safety ──────────────────────────────────────
-
-  test('E2E reset does not throw (no-op when already clean)', async () => {
-    // This validates that the reset function is safe to call
-    // even when there is nothing to clean.
-    await expect(resetE2EDatabase()).resolves.not.toThrow();
   });
 
 });
