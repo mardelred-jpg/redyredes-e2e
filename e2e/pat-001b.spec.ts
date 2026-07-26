@@ -4,7 +4,7 @@ import { signUpWithTestingToken, signOut, signInViaClerkUI, AuthContext } from '
 import { verifyViaAPI, verifyTicketsViaAPI } from './helpers/api-verify';
 import { verifyDbIntegrity, resetE2EDatabase, deleteClerkTestUser } from './helpers/db-verify';
 
-const DASHBOARD_URL = process.env.E2E_DASHBOARD_URL || 'https://dashboard.redyredes.com';
+const DASHBOARD_URL = process.env.E2E_DASHBOARD_URL!;
 let authContext: AuthContext | null = null;
 let organizationId: string | null = null;
 

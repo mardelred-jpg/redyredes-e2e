@@ -1,12 +1,11 @@
 import { defineConfig, devices } from '@playwright/test';
-import * as dotenv from 'dotenv';
-import * as path from 'path';
+import { verifyEnv } from './e2e/helpers/env-verify';
 
-// Load E2E-specific environment variables
-dotenv.config({ path: path.resolve(__dirname, '.env.e2e') });
+// Load and verify E2E-specific environment variables
+verifyEnv();
 
-const JOIN_URL = process.env.E2E_JOIN_URL || 'https://join.redyredes.com';
-const DASHBOARD_URL = process.env.E2E_DASHBOARD_URL || 'https://dashboard.redyredes.com';
+const JOIN_URL = process.env.E2E_JOIN_URL!;
+const DASHBOARD_URL = process.env.E2E_DASHBOARD_URL!;
 
 export default defineConfig({
   // Test directory

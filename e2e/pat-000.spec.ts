@@ -10,9 +10,9 @@ import { test, expect } from '@playwright/test';
  * Failure means the platform is DOWN — all other tests are blocked.
  */
 
-const API_URL = process.env.E2E_API_URL || 'https://api.redyredes.com';
-const JOIN_URL = process.env.E2E_JOIN_URL || 'https://join.redyredes.com';
-const DASHBOARD_URL = process.env.E2E_DASHBOARD_URL || 'https://dashboard.redyredes.com';
+const API_URL = process.env.E2E_API_URL!;
+const JOIN_URL = process.env.E2E_JOIN_URL!;
+const DASHBOARD_URL = process.env.E2E_DASHBOARD_URL!;
 
 test.describe('PAT-000 — Smoke Test', () => {
 

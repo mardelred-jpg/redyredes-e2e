@@ -12,8 +12,8 @@
 
 import { Page, BrowserContext } from '@playwright/test';
 
-const JOIN_URL = process.env.E2E_JOIN_URL || 'https://join.redyredes.com';
-const DASHBOARD_URL = process.env.E2E_DASHBOARD_URL || 'https://dashboard.redyredes.com';
+const JOIN_URL = process.env.E2E_JOIN_URL!;
+const DASHBOARD_URL = process.env.E2E_DASHBOARD_URL!;
 
 // ── PAT-001B: Testing Token path ──────────────────────────────
 

@@ -10,7 +10,7 @@
 
 import { expect, Page } from '@playwright/test';
 
-const API_URL = process.env.E2E_API_URL || 'https://api.redyredes.com';
+const API_URL = process.env.E2E_API_URL!;
 
 export interface ApiVerificationResult {
   identity: {
