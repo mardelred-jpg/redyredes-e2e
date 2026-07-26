@@ -1,0 +1,292 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------
+// Identity & Billing (Infrastructure mappings)
+// ---------------------------------------------------------
+
+enum BillingState {
+  PENDING_PAYMENT
+  TRIAL
+  ACTIVE
+  PAST_DUE
+  SUSPENDED
+  CANCELED
+}
+
+enum OrgEnvironment {
+  PRODUCTION
+  E2E
+}
+
+model Organization {
+  id               String         @id
+  name             String
+  cif              String?
+  address          String?
+  postalCode       String?
+  city             String?
+  province         String?
+  country          String?
+  billingState     BillingState   @default(PENDING_PAYMENT)
+  operationalState String         @default("NEW")
+  environment      OrgEnvironment @default(PRODUCTION)
+  createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
+
+  customers        Customer[]
+  tickets          Ticket[]
+  subscription     Subscription?
+  billingAuditLogs BillingAuditLog[]
+  legalAcceptances LegalAcceptance[]
+}
+
+model Customer {
+  id             String   @id
+  organizationId String?
+  email          String   @unique
+  identityId     String?  @unique
+  displayName    String
+  language       String   @default("es")
+  timezone       String   @default("Europe/Madrid")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  organization    Organization? @relation(fields: [organizationId], references: [id])
+  tickets         Ticket[]      @relation("Requester")
+  assignedTickets Ticket[]      @relation("Assignee")
+}
+
+// ---------------------------------------------------------
+// Core Domain Models (Infrastructure mapped)
+// ---------------------------------------------------------
+
+model Ticket {
+  id              String  @id
+  ticketNumber    String  @unique
+  organizationId  String
+  clientId        String
+  requesterId     String
+  assigneeId      String?
+  title           String
+  description     String
+  type            String // Incident, ServiceRequest, Change, Problem, Task
+  priority        String // P1, P2, P3, P4
+  category        String // Microsoft 365, Network, etc.
+  status          String // New, Open, InProgress, Resolved, Closed
+  knowledgeStatus String  @default("None") // None, Candidate, Published
+
+  source            String  @default("DASHBOARD")
+  externalReference String?
+
+  // SLA Snapshot (Flattered for MVP)
+  slaId                    String?
+  slaName                  String?
+  firstResponseTargetAt    DateTime?
+  resolutionTargetAt       DateTime?
+  firstResponseStatus      String    @default("Pending") // Pending, OnTrack, AtRisk, Breached, Completed
+  resolutionStatus         String    @default("Pending")
+  firstResponseCompletedAt DateTime?
+  resolutionCompletedAt    DateTime?
+
+  // Telemetry Timestamps
+  persistedAt        DateTime?
+  sentToJiraAt       DateTime?
+  jiraAcknowledgedAt DateTime?
+  customerNotifiedAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+  requester    Customer     @relation("Requester", fields: [requesterId], references: [id])
+  assignee     Customer?    @relation("Assignee", fields: [assigneeId], references: [id])
+
+  comments TicketComment[]
+  timeline TicketTimeline[]
+  history  TicketHistory[]
+}
+
+model TicketComment {
+  id         String   @id
+  ticketId   String
+  authorId   String
+  content    String
+  visibility String // Public, Internal
+  createdAt  DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+}
+
+model TicketTimeline {
+  id        String   @id
+  ticketId  String
+  actorId   String
+  origin    String // Portal, Email, API, Automation, Jira
+  action    String
+  comment   String?
+  metadata  Json? // Optional JSON for things like MessageID, Attachments list, etc.
+  createdAt DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+}
+
+model TicketHistory {
+  id             String   @id
+  ticketId       String
+  technicalActor String
+  operation      String // CREATE, UPDATE, DELETE
+  fieldChanges   Json // the recorded diffs
+  createdAt      DateTime @default(now())
+
+  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+}
+
+// ---------------------------------------------------------
+// Email Gateway Models
+// ---------------------------------------------------------
+
+model EmailMessage {
+  id        String  @id @default(uuid())
+  messageId String  @unique
+  threadId  String?
+  inReplyTo String?
+  ticketId  String? // Not hard linked via FK to allow messages that fail matching or dead-letters, but useful for reference.
+
+  from    String
+  to      String
+  subject String
+  body    String
+
+  receivedAt DateTime @default(now())
+}
+
+model EmailThread {
+  id        String   @id @default(uuid())
+  threadId  String   @unique
+  ticketId  String   @unique
+  createdAt DateTime @default(now())
+}
+
+model MessageIdCache {
+  messageId     String   @id
+  ticketId      String
+  inReplyTo     String?
+  references    String[]
+  ticketNumber  String?
+  correlationId String?
+  createdAt     DateTime @default(now())
+}
+
+model EmailOutbox {
+  id          String    @id @default(uuid())
+  ticketId    String
+  to          String
+  subject     String
+  body        String
+  headers     Json?
+  status      String    @default("PENDING") // PENDING, SENT, FAILED
+  errorReason String?
+  createdAt   DateTime  @default(now())
+  sentAt      DateTime?
+}
+
+model EmailDeadLetter {
+  id         String   @id @default(uuid())
+  messageId  String
+  reason     String
+  rawPayload Json
+  createdAt  DateTime @default(now())
+}
+
+// ---------------------------------------------------------
+// Provisioning & Billing
+// ---------------------------------------------------------
+
+model ProvisioningSaga {
+  journeyId      String   @id
+  status         String   @default("VALIDATING")
+  payload        Json
+  organizationId String?
+  customerId     String?
+  error          String?
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+}
+
+model Subscription {
+  id                     String   @id @default(uuid())
+  organizationId         String   @unique
+  stripeCustomerId       String?
+  stripeSubscriptionId   String?
+  wantsHardwareSupport   Boolean  @default(false)
+  wantsNetworkManagement Boolean  @default(false)
+  wantsCloudBackup       Boolean  @default(false)
+  status                 String   @default("TRIALING")
+  createdAt              DateTime @default(now())
+  updatedAt              DateTime @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id])
+}
+
+// ---------------------------------------------------------
+// Resilience & Retries
+// ---------------------------------------------------------
+
+model FailedOperation {
+  id            String   @id @default(uuid())
+  operationType String
+  aggregateType String
+  aggregateId   String
+  correlationId String?
+  payload       Json
+  errorCode     String?
+  errorMessage  String?
+  retryCount    Int      @default(0)
+  nextRetryAt   DateTime
+  status        String   @default("PENDING") // PENDING, RESOLVED, DEAD_LETTER
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model ProcessedWebhook {
+  eventId    String   @id
+  type       String
+  processedAt DateTime @default(now())
+}
+
+model BillingAuditLog {
+  id             String   @id @default(uuid())
+  organizationId String
+  stripeEventId  String
+  eventType      String
+  oldState       String
+  newState       String
+  metadata       Json?
+  timestamp      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}
+
+model LegalAcceptance {
+  id              String   @id @default(uuid())
+  organizationId  String
+  userId          String?
+  contractVersion String
+  privacyVersion  String
+  slaVersion      String
+  acceptedAt      DateTime @default(now())
+  ip              String?
+  userAgent       String?
+  
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+}

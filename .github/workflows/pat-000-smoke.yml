@@ -34,6 +34,12 @@ jobs:
       - name: Install Playwright browsers (Chromium only)
         run: npx playwright install chromium --with-deps
 
+      # ── Verify Prisma Client ───────────────────────────────
+      - name: Verify Prisma Client
+        run: |
+          npx prisma generate
+          node -e "require('@prisma/client')"
+
       # ── Run PAT-000 ────────────────────────────────────────
       - name: Run PAT-000 Smoke Test
         run: npm run e2e:pat000
