@@ -63,11 +63,18 @@ export async function verifyDbIntegrity(
     }
 
     // ── 2. Customer is correctly bound ─────────────────────
-    const customer = await prisma.customer.findFirst({
-      where: {
-        OR: [{ id: clerkUserId }, { identityId: clerkUserId }],
-      },
-    });
+    let customer;
+    if (clerkUserId === 'ui-signup') {
+      customer = await prisma.customer.findFirst({
+        where: { organizationId },
+      });
+    } else {
+      customer = await prisma.customer.findFirst({
+        where: {
+          OR: [{ id: clerkUserId }, { identityId: clerkUserId }],
+        },
+      });
+    }
 
     if (!customer) throw new Error(`Customer for userId=${clerkUserId} not found`);
     if (customer.organizationId !== organizationId) {

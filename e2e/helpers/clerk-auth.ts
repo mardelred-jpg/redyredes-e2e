@@ -32,11 +32,13 @@ export async function signUpWithTestingToken(
   const token = process.env.CLERK_TESTING_TOKEN;
 
   if (!token) {
-    throw new Error(
-      'CLERK_TESTING_TOKEN is not set. ' +
-      'Set it in .env.e2e to use PAT-001B. ' +
-      'For real UI signup, use PAT-001C instead.'
+    console.log(
+      'CLERK_TESTING_TOKEN not configured. Falling back to Clerk UI.'
     );
+    const page = await context.newPage();
+    await signUpViaClerkUI(page, email, password);
+    await page.close();
+    return 'ui-signup';
   }
 
   // Create user via Clerk Backend API

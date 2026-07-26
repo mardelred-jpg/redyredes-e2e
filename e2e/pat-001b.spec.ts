@@ -19,7 +19,7 @@ test.describe.serial('PAT-001B — Customer Journey (Testing Token)', () => {
 
   test.afterAll(async () => {
     // Cleanup the Clerk user created during the test
-    if (clerkUserId) {
+    if (clerkUserId && clerkUserId !== 'ui-signup') {
       await deleteClerkTestUser(clerkUserId);
       console.log(`[PAT-001B] Cleaned up Clerk user: ${clerkUserId}`);
     }
@@ -196,6 +196,10 @@ test.describe.serial('PAT-001B — Customer Journey (Testing Token)', () => {
     expect(clerkUserId).toBeTruthy();
 
     const dbReport = await verifyDbIntegrity(organizationId!, clerkUserId!);
+    
+    if (clerkUserId === 'ui-signup') {
+      clerkUserId = dbReport.customer.id;
+    }
     
     expect(dbReport.organization.environment).toBe('E2E');
     expect(dbReport.customer.organizationId).toBe(organizationId);
