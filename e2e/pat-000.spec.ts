@@ -20,7 +20,7 @@ test.describe('PAT-000 — Smoke Test', () => {
 
   test('API: /api/live responds 200', async ({ request }) => {
     const res = await request.get(`${API_URL}/api/live`);
-    expect(res.status()).toBe(500);
+    expect(res.status()).toBe(200);
     const body = await res.json();
     expect(body.status).toBe('ok');
   });
