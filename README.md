@@ -1,3 +1,4 @@
+<!-- dummy change for CI gate test -->
 # redyredes-e2e
 
 **Cross-repository End-to-End testing and Continuous Validation framework for the RedyRedes platform.**
