@@ -24,11 +24,16 @@ const DASHBOARD_URL = process.env.E2E_DASHBOARD_URL || 'https://dashboard.redyre
  *
  * Returns the Clerk userId for the created test user.
  */
+export type AuthContext = {
+  mode: 'api' | 'ui';
+  clerkUserId?: string;
+};
+
 export async function signUpWithTestingToken(
   context: BrowserContext,
   email: string,
   password: string
-): Promise<string> {
+): Promise<AuthContext> {
   const token = process.env.CLERK_TESTING_TOKEN;
 
   if (!token) {
@@ -38,7 +43,7 @@ export async function signUpWithTestingToken(
     const page = await context.newPage();
     await signUpViaClerkUI(page, email, password);
     await page.close();
-    return 'ui-signup';
+    return { mode: 'ui' };
   }
 
   // Create user via Clerk Backend API
@@ -85,7 +90,7 @@ export async function signUpWithTestingToken(
   ]);
 
   await page.close();
-  return userId;
+  return { mode: 'api', clerkUserId: userId };
 }
 
 // ── PAT-001C: Real Clerk UI path ──────────────────────────────

@@ -1,11 +1,11 @@
 import { test, expect } from '@playwright/test';
 import { generateE2ECompany } from './helpers/e2e-data';
-import { signUpWithTestingToken, signOut, signInViaClerkUI } from './helpers/clerk-auth';
+import { signUpWithTestingToken, signOut, signInViaClerkUI, AuthContext } from './helpers/clerk-auth';
 import { verifyViaAPI, verifyTicketsViaAPI } from './helpers/api-verify';
 import { verifyDbIntegrity, resetE2EDatabase, deleteClerkTestUser } from './helpers/db-verify';
 
 const DASHBOARD_URL = process.env.E2E_DASHBOARD_URL || 'https://dashboard.redyredes.com';
-let clerkUserId: string | null = null;
+let authContext: AuthContext | null = null;
 let organizationId: string | null = null;
 
 test.describe.serial('PAT-001B — Customer Journey (Testing Token)', () => {
@@ -19,20 +19,23 @@ test.describe.serial('PAT-001B — Customer Journey (Testing Token)', () => {
 
   test.afterAll(async () => {
     // Cleanup the Clerk user created during the test
-    if (clerkUserId && clerkUserId !== 'ui-signup') {
-      await deleteClerkTestUser(clerkUserId);
-      console.log(`[PAT-001B] Cleaned up Clerk user: ${clerkUserId}`);
+    if (authContext?.clerkUserId) {
+      await deleteClerkTestUser(authContext.clerkUserId);
+      console.log(`[PAT-001B] Cleaned up Clerk user: ${authContext.clerkUserId}`);
     }
   });
 
   test('Phase 1: Clerk signup (Testing Token)', async ({ context }) => {
     // Uses Clerk Testing Token to bypass UI and inject session cookie
-    clerkUserId = await signUpWithTestingToken(
+    authContext = await signUpWithTestingToken(
       context,
       testData.administrator.email,
       testData.administrator.password
     );
-    expect(clerkUserId).toBeTruthy();
+    expect(authContext).toBeTruthy();
+    if (authContext.mode === 'api') {
+      expect(authContext.clerkUserId).toBeTruthy();
+    }
   });
 
   test('Phase 2: Onboarding — Company form', async ({ page }) => {
@@ -193,12 +196,12 @@ test.describe.serial('PAT-001B — Customer Journey (Testing Token)', () => {
 
   test('Phase 10b: DB integrity + PRODUCTION isolation guard', async () => {
     expect(organizationId).toBeTruthy();
-    expect(clerkUserId).toBeTruthy();
+    expect(authContext).toBeTruthy();
 
-    const dbReport = await verifyDbIntegrity(organizationId!, clerkUserId!);
+    const dbReport = await verifyDbIntegrity(organizationId!, authContext!);
     
-    if (clerkUserId === 'ui-signup') {
-      clerkUserId = dbReport.customer.id;
+    if (authContext!.mode === 'ui') {
+      authContext!.clerkUserId = dbReport.customer.id;
     }
     
     expect(dbReport.organization.environment).toBe('E2E');

@@ -43,13 +43,29 @@ export interface DbIntegrityReport {
  * Verifies database integrity for the given clerkUserId after a completed journey.
  * Throws if any assertion fails.
  */
+import { AuthContext } from './clerk-auth';
+
 export async function verifyDbIntegrity(
   organizationId: string,
-  clerkUserId: string
+  authContext: AuthContext
 ): Promise<DbIntegrityReport> {
   const prisma = new PrismaClient();
 
   try {
+    if (!organizationId) {
+      throw new Error('Abort: organizationId cannot be null or empty.');
+    }
+
+    const orgCountForId = await prisma.organization.count({ where: { id: organizationId } });
+    if (orgCountForId !== 1) {
+      throw new Error(`Abort: Exactly 1 Organization expected for ${organizationId}, found ${orgCountForId}`);
+    }
+
+    const customerCountForId = await prisma.customer.count({ where: { organizationId } });
+    if (customerCountForId !== 1) {
+      throw new Error(`Abort: Exactly 1 Customer expected for org ${organizationId}, found ${customerCountForId}`);
+    }
+
     // ── 1. Organization exists and is E2E-tagged ────────────
     const org = await prisma.organization.findUnique({
       where: { id: organizationId },
@@ -64,19 +80,19 @@ export async function verifyDbIntegrity(
 
     // ── 2. Customer is correctly bound ─────────────────────
     let customer;
-    if (clerkUserId === 'ui-signup') {
+    if (authContext.mode === 'ui') {
       customer = await prisma.customer.findFirst({
         where: { organizationId },
       });
     } else {
       customer = await prisma.customer.findFirst({
         where: {
-          OR: [{ id: clerkUserId }, { identityId: clerkUserId }],
+          OR: [{ id: authContext.clerkUserId! }, { identityId: authContext.clerkUserId! }],
         },
       });
     }
 
-    if (!customer) throw new Error(`Customer for userId=${clerkUserId} not found`);
+    if (!customer) throw new Error(`Customer for userId=${authContext.clerkUserId} not found`);
     if (customer.organizationId !== organizationId) {
       throw new Error(
         `Customer.organizationId=${customer.organizationId} does not match expected ${organizationId}`
@@ -96,8 +112,6 @@ export async function verifyDbIntegrity(
     if (!legal) throw new Error(`LegalAcceptance for org ${organizationId} not found`);
 
     // ── 5. No duplicates ───────────────────────────────────
-    const orgCount = await prisma.organization.count({ where: { id: organizationId } });
-    if (orgCount !== 1) throw new Error(`Duplicate organizations found: count=${orgCount}`);
 
     const subCount = await prisma.subscription.count({ where: { organizationId } });
     if (subCount !== 1) throw new Error(`Duplicate subscriptions found: count=${subCount}`);
