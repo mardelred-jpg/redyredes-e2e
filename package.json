@@ -13,7 +13,8 @@
     "e2e:pat001c:headed": "playwright test e2e/pat-001c.spec.ts --headed",
     "e2e:all": "playwright test",
     "e2e:report": "playwright show-report",
-    "e2e:trace": "playwright show-trace test-results/trace.zip"
+    "e2e:trace": "playwright show-trace test-results/trace.zip",
+    "postinstall": "prisma generate"
   },
   "devDependencies": {
     "@playwright/test": "^1.52.0",

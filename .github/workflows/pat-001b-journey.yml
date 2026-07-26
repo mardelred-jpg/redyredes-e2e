@@ -51,6 +51,12 @@ jobs:
       - name: Install Playwright browsers (Chromium only)
         run: npx playwright install chromium --with-deps
 
+      # ── Verify Prisma Client ───────────────────────────────
+      - name: Verify Prisma Client
+        run: |
+          npx prisma generate
+          node -e "require('@prisma/client')"
+
       # ── Resolve target URL ─────────────────────────────────
       # On deployment_status events, override the URL with the actual Vercel preview URL
       - name: Resolve deployment target URL
