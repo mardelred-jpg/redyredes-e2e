@@ -32,16 +32,22 @@ test.describe('PAT-000 — Smoke Test', () => {
     expect(body.status).toBe('ok');
   });
 
-  test('API: /api/health returns DB = UP', async ({ request }) => {
+  test('API: /api/health returns DB = OK', async ({ request }) => {
     const res = await request.get(`${API_URL}/api/health`);
     // Accept 200 (UP) or 200 with DEGRADED (non-DB services down)
     // 503 means DB is DOWN — hard failure
     expect(res.status(), '/api/health must not return 503 (DB DOWN)').not.toBe(503);
     const body = await res.json();
+
+    // The endpoint answers { status, components: { Database, AI, Resend, ... } }.
+    // This assertion read `body.checks.database === 'UP'`, which never existed:
+    // `checks` is undefined, so the smoke test that claims to run on every push
+    // failed on every run. A guard that is always red guards nothing — it just
+    // teaches the team to ignore it. Fixed on 15-09-2026 against the live shape.
     expect(
-      body.checks?.database,
-      'Database must be UP'
-    ).toBe('UP');
+      body.components?.Database,
+      `Database must be OK — /api/health answered ${JSON.stringify(body.components ?? body)}`
+    ).toBe('OK');
   });
 
   // ── Web Layer ──────────────────────────────────────────────
